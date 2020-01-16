@@ -10,11 +10,9 @@ import (
 
 /*
 TODO:
-  - encrypted disks
-  - updating disk type
-  - standard|premium|standardssd
-  - custom size / changing size?
   - attaching an existing disk
+  - local caching
+  - write accelerator
 */
 
 func TestAccLinuxVirtualMachine_diskOSBasic(t *testing.T) {
@@ -27,6 +25,39 @@ func TestAccLinuxVirtualMachine_diskOSBasic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testLinuxVirtualMachine_diskOSBasic(data),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+		},
+	})
+}
+
+func TestAccLinuxVirtualMachine_diskOSCachingType(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_linux_virtual_machine", "test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
+		CheckDestroy: checkLinuxVirtualMachineIsDestroyed,
+		Steps: []resource.TestStep{
+			{
+				Config: testLinuxVirtualMachine_diskOSCachingType(data, "None"),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+			{
+				Config: testLinuxVirtualMachine_diskOSCachingType(data, "ReadOnly"),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+			{
+				Config: testLinuxVirtualMachine_diskOSCachingType(data, "ReadWrite"),
 				Check: resource.ComposeTestCheckFunc(
 					checkLinuxVirtualMachineExists(data.ResourceName),
 				),
@@ -55,6 +86,51 @@ func TestAccLinuxVirtualMachine_diskOSCustomName(t *testing.T) {
 	})
 }
 
+func TestAccLinuxVirtualMachine_diskOSCustomSize(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_linux_virtual_machine", "test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
+		CheckDestroy: checkLinuxVirtualMachineIsDestroyed,
+		Steps: []resource.TestStep{
+			{
+				Config: testLinuxVirtualMachine_diskOSCustomSize(data, 30),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+		},
+	})
+}
+
+func TestAccLinuxVirtualMachine_diskOSCustomSizeExpanded(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_linux_virtual_machine", "test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
+		CheckDestroy: checkLinuxVirtualMachineIsDestroyed,
+		Steps: []resource.TestStep{
+			{
+				Config: testLinuxVirtualMachine_diskOSCustomSize(data, 30),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+			{
+				Config: testLinuxVirtualMachine_diskOSCustomSize(data, 60),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+		},
+	})
+}
+
 func TestAccLinuxVirtualMachine_diskOSDiskEncryptionSet(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_linux_virtual_machine", "test")
 
@@ -72,6 +148,134 @@ func TestAccLinuxVirtualMachine_diskOSDiskEncryptionSet(t *testing.T) {
 			},
 			{
 				Config: testLinuxVirtualMachine_diskOSDiskDiskEncryptionSet(data),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+		},
+	})
+}
+
+func TestAccLinuxVirtualMachine_diskOSExistingDisk(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_linux_virtual_machine", "test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
+		CheckDestroy: checkLinuxVirtualMachineIsDestroyed,
+		Steps: []resource.TestStep{
+			{
+				// first provision the VM
+				Config: testLinuxVirtualMachine_diskOSCustomName(data),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			{
+				// then delete the VM, but don't delete the OS disk
+				Config: testLinuxVirtualMachine_template(data),
+			},
+			{
+				// at which point we can then create a VM based on that OS Disk
+				Config: testLinuxVirtualMachine_diskOSExistingDisk(data),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+		},
+	})
+}
+
+func TestAccLinuxVirtualMachine_diskOSStorageTypeStandardLRS(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_linux_virtual_machine", "test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
+		CheckDestroy: checkLinuxVirtualMachineIsDestroyed,
+		Steps: []resource.TestStep{
+			{
+				Config: testLinuxVirtualMachine_diskOSStorageAccountType(data, "Standard_LRS"),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+		},
+	})
+}
+
+func TestAccLinuxVirtualMachine_diskOSStorageTypeStandardSSDLRS(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_linux_virtual_machine", "test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
+		CheckDestroy: checkLinuxVirtualMachineIsDestroyed,
+		Steps: []resource.TestStep{
+			{
+				Config: testLinuxVirtualMachine_diskOSStorageAccountType(data, "StandardSSD_LRS"),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+		},
+	})
+}
+
+func TestAccLinuxVirtualMachine_diskOSStorageTypePremiumLRS(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_linux_virtual_machine", "test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
+		CheckDestroy: checkLinuxVirtualMachineIsDestroyed,
+		Steps: []resource.TestStep{
+			{
+				Config: testLinuxVirtualMachine_diskOSStorageAccountType(data, "Premium_LRS"),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+		},
+	})
+}
+
+func TestAccLinuxVirtualMachine_diskOSStorageTypeUpdate(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_linux_virtual_machine", "test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
+		CheckDestroy: checkLinuxVirtualMachineIsDestroyed,
+		Steps: []resource.TestStep{
+			{
+				Config: testLinuxVirtualMachine_diskOSStorageAccountType(data, "Standard_LRS"),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+			{
+				Config: testLinuxVirtualMachine_diskOSStorageAccountType(data, "Premium_LRS"),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+			{
+				Config: testLinuxVirtualMachine_diskOSStorageAccountType(data, "StandardSSD_LRS"),
+				Check: resource.ComposeTestCheckFunc(
+					checkLinuxVirtualMachineExists(data.ResourceName),
+				),
+			},
+			data.ImportStep(),
+			{
+				Config: testLinuxVirtualMachine_diskOSStorageAccountType(data, "Standard_LRS"),
 				Check: resource.ComposeTestCheckFunc(
 					checkLinuxVirtualMachineExists(data.ResourceName),
 				),
@@ -116,6 +320,41 @@ resource "azurerm_linux_virtual_machine" "test" {
 `, template, data.RandomInteger)
 }
 
+func testLinuxVirtualMachine_diskOSCachingType(data acceptance.TestData, cachingType string) string {
+	template := testLinuxVirtualMachine_template(data)
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_linux_virtual_machine" "test" {
+  name                            = "acctestVM-%d"
+  resource_group_name             = azurerm_resource_group.test.name
+  location                        = azurerm_resource_group.test.location
+  size                            = "Standard_F2"
+  admin_username                  = "adminuser"
+  network_interface_ids = [
+    azurerm_network_interface.test.id,
+  ]
+
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = local.first_public_key
+  }
+
+  os_disk {
+    caching              = "%s"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "16.04-LTS"
+    version   = "latest"
+  }
+}
+`, template, data.RandomInteger, cachingType)
+}
+
 func testLinuxVirtualMachine_diskOSCustomName(data acceptance.TestData) string {
 	template := testLinuxVirtualMachine_template(data)
 	return fmt.Sprintf(`
@@ -150,6 +389,43 @@ resource "azurerm_linux_virtual_machine" "test" {
   }
 }
 `, template, data.RandomInteger)
+}
+
+func testLinuxVirtualMachine_diskOSCustomSize(data acceptance.TestData, size int) string {
+	template := testLinuxVirtualMachine_template(data)
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_linux_virtual_machine" "test" {
+  name                            = "acctestVM-%d"
+  resource_group_name             = azurerm_resource_group.test.name
+  location                        = azurerm_resource_group.test.location
+  size                            = "Standard_F2"
+  admin_username                  = "adminuser"
+  network_interface_ids = [
+    azurerm_network_interface.test.id,
+  ]
+
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = local.first_public_key
+  }
+
+  os_disk {
+    name                 = "osdisk1"
+    caching              = "ReadWrite"
+    size                 = %d
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "16.04-LTS"
+    version   = "latest"
+  }
+}
+`, template, data.RandomInteger, size)
 }
 
 func testLinuxVirtualMachine_diskOSDiskDiskEncryptionSetDependencies(data acceptance.TestData) string {
@@ -303,4 +579,73 @@ resource "azurerm_linux_virtual_machine" "test" {
   ]
 }
 `, template, data.RandomInteger)
+}
+
+func testLinuxVirtualMachine_diskOSExistingDisk(data acceptance.TestData) string {
+	template := testLinuxVirtualMachine_template(data)
+	return fmt.Sprintf(`
+%s
+
+data "azurerm_managed_disk" "existing" {
+  name                 = "osdisk1"
+  resource_group_name  = azurerm_resource_group.test.name
+}
+
+resource "azurerm_linux_virtual_machine" "test" {
+  name                            = "acctestVM-%d"
+  resource_group_name             = azurerm_resource_group.test.name
+  location                        = azurerm_resource_group.test.location
+  size                            = "Standard_F2"
+  admin_username                  = "adminuser"
+  network_interface_ids = [
+    azurerm_network_interface.test.id,
+  ]
+
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = local.first_public_key
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    managed_disk_id      = data.azurerm_managed_disk.existing.id
+    storage_account_type = "Standard_LRS"
+  }
+}
+`, template, data.RandomInteger)
+}
+
+func testLinuxVirtualMachine_diskOSStorageAccountType(data acceptance.TestData, accountType string) string {
+	template := testLinuxVirtualMachine_template(data)
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_linux_virtual_machine" "test" {
+  name                            = "acctestVM-%d"
+  resource_group_name             = azurerm_resource_group.test.name
+  location                        = azurerm_resource_group.test.location
+  size                            = "Standard_F2"
+  admin_username                  = "adminuser"
+  network_interface_ids = [
+    azurerm_network_interface.test.id,
+  ]
+
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = local.first_public_key
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "%s"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "16.04-LTS"
+    version   = "latest"
+  }
+}
+`, template, data.RandomInteger, accountType)
 }

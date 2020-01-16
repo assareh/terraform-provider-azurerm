@@ -146,6 +146,14 @@ func VirtualMachineOSDiskSchema() *schema.Schema {
 					ValidateFunc: validation.IntBetween(0, 1023),
 				},
 
+				"managed_disk_id": {
+					Type:     schema.TypeString,
+					Optional: true,
+					ForceNew: true,
+					Computed: true,
+					// TODO: validate it's a MD ID
+				},
+
 				"name": {
 					Type:     schema.TypeString,
 					Optional: true,
@@ -195,6 +203,11 @@ func ExpandVirtualMachineOSDisk(input []interface{}, osType compute.OperatingSys
 		}
 	}
 
+	if managedDiskId := raw["managed_disk_id"].(string); managedDiskId != "" {
+		disk.CreateOption = compute.DiskCreateOptionTypesAttach
+		disk.ManagedDisk.ID = utils.String(managedDiskId)
+	}
+
 	if name := raw["name"].(string); name != "" {
 		disk.Name = utils.String(name)
 	}
@@ -225,9 +238,14 @@ func FlattenVirtualMachineOSDisk(input *compute.OSDisk) []interface{} {
 	}
 
 	diskEncryptionSetId := ""
+	managedDiskId := ""
 	storageAccountType := ""
 	if input.ManagedDisk != nil {
 		storageAccountType = string(input.ManagedDisk.StorageAccountType)
+
+		if input.ManagedDisk.ID != nil {
+			managedDiskId = *input.ManagedDisk.ID
+		}
 
 		if input.ManagedDisk.DiskEncryptionSet != nil && input.ManagedDisk.DiskEncryptionSet.ID != nil {
 			diskEncryptionSetId = *input.ManagedDisk.DiskEncryptionSet.ID
@@ -244,6 +262,7 @@ func FlattenVirtualMachineOSDisk(input *compute.OSDisk) []interface{} {
 			"disk_size_gb":              diskSizeGb,
 			"diff_disk_settings":        diffDiskSettings,
 			"disk_encryption_set_id":    diskEncryptionSetId,
+			"managed_disk_id":           managedDiskId,
 			"name":                      name,
 			"storage_account_type":      storageAccountType,
 			"write_accelerator_enabled": writeAcceleratorEnabled,

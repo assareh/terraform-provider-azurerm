@@ -197,10 +197,10 @@ func resourceLinuxVirtualMachineCreate(d *schema.ResourceData, meta interface{})
 	sourceImageReferenceRaw := d.Get("source_image_reference").([]interface{})
 	sourceImageId := d.Get("source_image_id").(string)
 	sourceImageReference, err := ExpandSourceImageReference(sourceImageReferenceRaw, sourceImageId)
-	if err != nil {
-		// TODO: is this still valid for VM's?
-		return err
-	}
+	//if err != nil {
+	//	// TODO: is this still valid for VM's?
+	//	return err
+	//}
 
 	sshKeysRaw := d.Get("admin_ssh_key").(*schema.Set).List()
 	sshKeys := ExpandSSHKeys(sshKeysRaw)
